@@ -29,6 +29,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+    implementation("io.javalin:javalin:7.1.0")
+    implementation("org.slf4j:slf4j-api:2.0.10")
+    runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 }
 
 tasks.jacocoTestReport {
