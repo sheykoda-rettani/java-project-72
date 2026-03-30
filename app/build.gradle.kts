@@ -4,6 +4,7 @@ plugins {
     id("checkstyle")
     id("org.sonarqube") version "7.1.0.6387"
     id("jacoco")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "hexlet.code"

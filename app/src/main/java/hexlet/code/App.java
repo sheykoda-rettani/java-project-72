@@ -19,17 +19,21 @@ public final class App {
     public static Javalin getApp() {
         if (app == null) {
             app = Javalin.create(config -> {
-                LOGGER.info("Обработка запроса к корневому маршруту");
-                config.routes.get("/", ctx -> ctx.result("Hello World"));
+                config.routes.get("/", ctx -> {
+                    LOGGER.info("Обработка запроса к корневому маршруту");
+                    ctx.result("Hello World");
+                });
             });
         }
         return app;
     }
 
     public static void main(final String[] args) {
-        final int port = 7000;
+        final int defaultPort = 7000;
+        String portEnv = System.getenv("PORT");
+        int port = (portEnv != null && !portEnv.isEmpty()) ? Integer.parseInt(portEnv) : defaultPort;
         Javalin appInstance = getApp();
-        appInstance.start(port);
+        appInstance.start(defaultPort);
         LOGGER.info("Приложение запущено на порту {}", port);
     }
 }
