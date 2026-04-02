@@ -34,6 +34,14 @@ dependencies {
     implementation("io.javalin:javalin:7.1.0")
     implementation("org.slf4j:slf4j-api:2.0.10")
     runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
+
+    runtimeOnly("com.h2database:h2:2.3.232")
+    runtimeOnly("org.postgresql:postgresql:42.7.9")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+
+    implementation("org.jdbi:jdbi3-core:3.11.0")
+    implementation("org.jdbi:jdbi3-kotlin:3.11.0")
+    implementation("org.jdbi:jdbi3-sqlobject:3.11.0")
 }
 
 tasks.jacocoTestReport {
