@@ -54,6 +54,8 @@ bin/
 /app/.gradle/
 /app/.idea/
 
+/app/jte-classes/
+
 *.cast
 *.rec
 demo.*

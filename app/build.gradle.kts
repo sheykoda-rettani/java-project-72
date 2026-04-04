@@ -31,7 +31,10 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-    implementation("io.javalin:javalin:7.1.0")
+    implementation("io.javalin:javalin:6.6.0")
+    implementation("io.javalin:javalin-bundle:6.6.0")
+    implementation("io.javalin:javalin-rendering:6.6.0")
+
     implementation("org.slf4j:slf4j-api:2.0.10")
     runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
@@ -40,8 +43,9 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.1.0")
 
     implementation("org.jdbi:jdbi3-core:3.11.0")
-    implementation("org.jdbi:jdbi3-kotlin:3.11.0")
     implementation("org.jdbi:jdbi3-sqlobject:3.11.0")
+
+    implementation("gg.jte:jte:3.2.2")
 }
 
 tasks.jacocoTestReport {

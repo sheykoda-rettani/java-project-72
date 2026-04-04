@@ -1,9 +1,13 @@
 package hexlet.code;
 
+import gg.jte.ContentType;
+import gg.jte.resolve.ResourceCodeResolver;
 import hexlet.code.db.DatabaseFactory;
 import io.javalin.Javalin;
+import io.javalin.rendering.template.JavalinJte;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.JdbiException;
+import gg.jte.TemplateEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,26 +18,28 @@ import java.nio.charset.StandardCharsets;
 import java.util.Scanner;
 
 public final class App {
-    private App() { }
+    private App() {
+    }
 
     /**
      * Логирование.
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
-    /**
-     * Само Javalin приложение.
-     */
-    private static Javalin app;
 
     public static Javalin getApp() {
-        if (app == null) {
-            app = Javalin.create(config -> {
-                config.routes.get("/", ctx -> {
-                    LOGGER.info("Обработка запроса к корневому маршруту");
-                    ctx.result("Hello World");
-                });
-            });
-        }
+        var app = Javalin.create(config -> {
+            config.bundledPlugins.enableDevLogging();
+            config.fileRenderer(new JavalinJte(createTemplateEngine()));
+        });
+
+        app.before(ctx -> {
+            ctx.contentType("text/html; charset=utf-8");
+        });
+
+        app.get("/", ctx -> {
+            ctx.render("home.jte");
+        });
+
         return app;
     }
 
@@ -79,5 +85,11 @@ public final class App {
         Javalin appInstance = getApp();
         appInstance.start(port);
         LOGGER.info("Приложение запущено на порту {}", port);
+    }
+
+    private static TemplateEngine createTemplateEngine() {
+        ClassLoader classLoader = App.class.getClassLoader();
+        ResourceCodeResolver codeResolver = new ResourceCodeResolver("templates", classLoader);
+        return TemplateEngine.create(codeResolver, ContentType.Html);
     }
 }
