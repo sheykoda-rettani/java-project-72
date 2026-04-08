@@ -45,9 +45,7 @@
         <module name="VisibilityModifier">
             <property name="protectedAllowed" value="true"/>
         </module>
-        <module name="AbstractClassName">
-            <property name="format" value="^Base.+$"/>
-        </module>
+        <module name="AbstractClassName"/>
         <module name="FinalParameters"/>
         <module name="CyclomaticComplexity"/>
         <module name="NPathComplexity"/>

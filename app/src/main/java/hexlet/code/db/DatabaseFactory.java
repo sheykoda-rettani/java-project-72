@@ -2,8 +2,6 @@ package hexlet.code.db;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 
 import javax.sql.DataSource;
 
@@ -19,18 +17,13 @@ public final class DatabaseFactory {
         if (dbUrl != null && !dbUrl.isEmpty()) {
             config.setJdbcUrl(dbUrl);
         } else {
-            config.setJdbcUrl("jdbc:h2:mem:project;DB_CLOSE_DELAY=-1");
+            String dbFilePath = "D:/IDEAPR~1/hexlet/page_analyzer/project";
+            String h2Url = "jdbc:h2:file:" + dbFilePath + ";AUTO_SERVER=TRUE";
+            config.setJdbcUrl(h2Url);
         }
 
         config.setMaximumPoolSize(maximumPoolSize);
-        config.setAutoCommit(false);
 
         return new HikariDataSource(config);
-    }
-
-    public static Jdbi getJdbi(final DataSource dataSource) {
-        Jdbi jdbi = Jdbi.create(dataSource);
-        jdbi.installPlugin(new SqlObjectPlugin());
-        return jdbi;
     }
 }

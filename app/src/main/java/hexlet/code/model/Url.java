@@ -21,7 +21,10 @@ public final class Url {
         this.createdAt = LocalDateTime.now();
     }
 
-    public Url() {
+    public Url(final Long aId, final String aName, final LocalDateTime aCreatedAt) {
+        this.id = aId;
+        this.name = aName;
+        this.createdAt = aCreatedAt;
     }
 
     public Long getId() {

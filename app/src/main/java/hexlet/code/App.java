@@ -2,20 +2,24 @@ package hexlet.code;
 
 import gg.jte.ContentType;
 import gg.jte.resolve.ResourceCodeResolver;
-import hexlet.code.db.DatabaseFactory;
+import hexlet.code.controller.HomeController;
+import hexlet.code.controller.UrlsController;
 import io.javalin.Javalin;
 import io.javalin.rendering.template.JavalinJte;
-import org.jdbi.v3.core.Jdbi;
-import org.jdbi.v3.core.JdbiException;
 import gg.jte.TemplateEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.sql.DataSource;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.stream.Collectors;
+
+import static hexlet.code.repository.BaseRepository.getConnection;
 
 public final class App {
     private App() {
@@ -36,37 +40,38 @@ public final class App {
             ctx.contentType("text/html; charset=utf-8");
         });
 
-        app.get("/", ctx -> {
-            ctx.render("home.jte");
-        });
+        app.get("/", HomeController::index);
+
+        app.get("/urls", UrlsController::index);
+        app.get("/urls/{id}", UrlsController::showOne);
+        app.post("/urls", UrlsController::addUrl);
 
         return app;
     }
 
-    public static void main(final String[] args) {
+    private static String readResourceFile(final String fileName) throws IOException {
+        var inputStream = App.class.getClassLoader().getResourceAsStream(fileName);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining("\n"));
+        }
+    }
+
+    public static void main(final String[] args) throws SQLException {
         final int defaultPort = 7000;
 
+        String sql;
         try {
-            DataSource dataSource = DatabaseFactory.getDataSource();
-            Jdbi jdbi = DatabaseFactory.getJdbi(dataSource);
-
-            try (InputStream is = App.class.getClassLoader().getResourceAsStream("schema.sql")) {
-                if (is == null) {
-                    throw new IOException("Файл схемы schema.sql не найден в classpath");
-                }
-                String schema = new Scanner(is, StandardCharsets.UTF_8).useDelimiter("\\A").next();
-                jdbi.withHandle(handle -> handle.execute(schema));
-                LOGGER.info("База данных успешно инициализирована.");
-            } catch (IOException e) {
-                LOGGER.error("Ошибка чтения файла схемы БД: {}", e.getMessage());
-                System.err.println("Не удалось запустить приложение. Отсутствует файл схемы.");
-                return;
-            }
-        } catch (JdbiException e) {
-            LOGGER.error("Ошибка инициализации БД: {}", e.getMessage());
-            System.err.println("Не удалось запустить приложение из-за ошибки базы данных.");
-            System.err.println(e.getMessage());
+            sql = readResourceFile("schema.sql");
+        } catch (IOException e) {
+            LOGGER.error("Ощибка во время чтения файла схемы", e);
             return;
+        }
+
+        LOGGER.info("Инициализация БД:");
+        LOGGER.info("Исполнение запроса {}", sql);
+        try (Connection conn = getConnection()) {
+            Statement statement = conn.createStatement();
+            statement.execute(sql);
         }
 
         String portEnv = System.getenv("PORT");

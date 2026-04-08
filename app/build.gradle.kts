@@ -42,9 +42,6 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql:42.7.9")
     implementation("com.zaxxer:HikariCP:5.1.0")
 
-    implementation("org.jdbi:jdbi3-core:3.11.0")
-    implementation("org.jdbi:jdbi3-sqlobject:3.11.0")
-
     implementation("gg.jte:jte:3.2.2")
 }
 
