@@ -76,10 +76,14 @@ public final class AppTest {
         final String urlToAdd = "https://ru.hexlet.io";
         JavalinTest.test(app, (server, client) -> {
             try (var response = client.post("/urls", "url=" + urlToAdd)) {
+                assertThat(response.request().url().toString()).contains("urls/1");
                 assertThat(response.body()).isNotNull();
                 String responseBody = response.body().string();
                 assertThat(responseBody).contains(urlToAdd);
             }
+            List<Url> urls = UrlRepository.findAll();
+            assertThat(urls).isNotEmpty();
+            assertThat(urls.size()).isEqualTo(1);
         });
     }
 
@@ -87,10 +91,15 @@ public final class AppTest {
     public void testDuplicateUrlOnlyResultsInOneRecord() {
         final String urlToAdd = "https://example.com";
         JavalinTest.test(app, (server, client) -> {
-            client.post("/urls", "url=" + urlToAdd);
-            client.post("/urls", "url=" + urlToAdd);
+            try (var responseFirst = client.post("/urls", "url=" + urlToAdd)) {
+                assertThat(responseFirst.request().url().toString()).contains("urls/1");
+            }
+            try (var responseSecond = client.post("/urls", "url=" + urlToAdd)) {
+                assertThat(responseSecond.request().url().toString()).contains("urls/1");
+            }
             List<Url> urls = UrlRepository.findAll();
             assertThat(urls).isNotEmpty();
+            assertThat(urls.size()).isEqualTo(1);
         });
     }
 
