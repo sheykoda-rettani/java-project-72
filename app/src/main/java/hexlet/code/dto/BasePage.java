@@ -13,7 +13,7 @@ public class BasePage {
      */
     private final String title;
 
-    public BasePage(final Context aCtx, String aTitle) {
+    public BasePage(final Context aCtx, final String aTitle) {
         this.flashMessage = aCtx.consumeSessionAttribute("flashMessage");
         this.title = aTitle;
     }

@@ -4,7 +4,9 @@ import gg.jte.ContentType;
 import gg.jte.resolve.ResourceCodeResolver;
 import hexlet.code.controller.HomeController;
 import hexlet.code.controller.UrlsController;
+import hexlet.code.exception.ValidationException;
 import io.javalin.Javalin;
+import io.javalin.http.HttpStatus;
 import io.javalin.rendering.template.JavalinJte;
 import gg.jte.TemplateEngine;
 import org.slf4j.Logger;
@@ -30,7 +32,9 @@ public final class App {
      */
     private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
 
-    public static Javalin getApp() {
+    public static Javalin getApp() throws SQLException {
+        initDb();
+
         var app = Javalin.create(config -> {
             config.bundledPlugins.enableDevLogging();
             config.fileRenderer(new JavalinJte(createTemplateEngine()));
@@ -38,6 +42,13 @@ public final class App {
 
         app.before(ctx -> {
             ctx.contentType("text/html; charset=utf-8");
+        });
+
+        //верхнеуровневый хэндлинг exception из контроллера. Выставление 422 тут
+        app.exception(ValidationException.class, (e, ctx) -> {
+            ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
+            ctx.sessionAttribute("flashMessage", e.getMessage());
+            HomeController.index(ctx);
         });
 
         app.get("/", HomeController::index);
@@ -49,16 +60,7 @@ public final class App {
         return app;
     }
 
-    private static String readResourceFile(final String fileName) throws IOException {
-        var inputStream = App.class.getClassLoader().getResourceAsStream(fileName);
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            return reader.lines().collect(Collectors.joining("\n"));
-        }
-    }
-
-    public static void main(final String[] args) throws SQLException {
-        final int defaultPort = 7000;
-
+    private static void initDb() throws SQLException {
         String sql;
         try {
             sql = readResourceFile("schema.sql");
@@ -73,6 +75,17 @@ public final class App {
             Statement statement = conn.createStatement();
             statement.execute(sql);
         }
+    }
+
+    private static String readResourceFile(final String fileName) throws IOException {
+        var inputStream = App.class.getClassLoader().getResourceAsStream(fileName);
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            return reader.lines().collect(Collectors.joining("\n"));
+        }
+    }
+
+    public static void main(final String[] args) throws SQLException {
+        final int defaultPort = 7000;
 
         String portEnv = System.getenv("PORT");
         int port = defaultPort;

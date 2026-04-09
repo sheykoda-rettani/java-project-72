@@ -2,9 +2,12 @@ package hexlet.code.controller;
 
 import hexlet.code.dto.UrlPage;
 import hexlet.code.dto.UrlsPage;
+import hexlet.code.exception.ValidationException;
 import hexlet.code.model.Url;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.http.Context;
+import io.javalin.http.HttpStatus;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -12,7 +15,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.Optional;
 
 import static io.javalin.rendering.template.TemplateUtil.model;
@@ -30,8 +32,12 @@ public final class UrlsController {
     public static void showOne(final Context ctx) throws SQLException {
         long id = ctx.pathParamAsClass("id", Long.class).get();
         Optional<Url> urlOpt = UrlRepository.findById(id);
+        //возврат на текущую страницу. Вынос во внешний хендлер кажется не разумным
         if (urlOpt.isEmpty()) {
-            throw new NoSuchElementException("Не найден URL по id %d".formatted(id));
+            ctx.sessionAttribute("flashMessage", "Информация по странице не найдена");
+            ctx.status(HttpStatus.NOT_FOUND);
+            index(ctx);
+            return;
         }
         UrlPage page = new UrlPage(ctx, urlOpt.get());
         ctx.render("urls/show.jte", model("urlPage", page));
@@ -39,25 +45,7 @@ public final class UrlsController {
 
     public static void addUrl(final Context ctx) throws SQLException {
         String rawUrl = ctx.formParam("url");
-        String domain;
-        try {
-            if (rawUrl == null || rawUrl.trim().isEmpty()) {
-                throw new URISyntaxException("", "URL не может быть пустым");
-            }
-            URI uri = new URI(rawUrl);
-            URL parsedUrl = uri.toURL();
-            domain = parsedUrl.getProtocol() + "://" + parsedUrl.getHost();
-            int port = parsedUrl.getPort();
-            if (port != -1 && port != parsedUrl.getDefaultPort()) {
-                domain += ":" + port;
-            }
-        } catch (URISyntaxException | MalformedURLException | IllegalArgumentException e) {
-            ctx.status(422);
-            ctx.sessionAttribute("flashMessage", ("Некорректный URL \"%s\". " +
-                    "Url должен быть в формате http(s)://(www.)host.domain(/otional)").formatted(rawUrl));
-            ctx.redirect("/");
-            return;
-        }
+        String domain = getDomain(rawUrl);
 
         Optional<Url> existingUrlOpt = UrlRepository.findByName(domain);
         if (existingUrlOpt.isPresent()) {
@@ -73,5 +61,26 @@ public final class UrlsController {
         Long newId = newUrl.getId();
         ctx.sessionAttribute("flashMessage", "Страница успешно добавлена");
         ctx.redirect("/urls/" + newId);
+    }
+
+    @NotNull
+    private static String getDomain(final String rawUrl) {
+        String domain;
+        try {
+            if (rawUrl == null || rawUrl.trim().isEmpty()) {
+                throw new ValidationException("URL не может быть пустым");
+            }
+            URI uri = new URI(rawUrl);
+            URL parsedUrl = uri.toURL();
+            domain = parsedUrl.getProtocol() + "://" + parsedUrl.getHost();
+            int port = parsedUrl.getPort();
+            if (port != -1 && port != parsedUrl.getDefaultPort()) {
+                domain += ":" + port;
+            }
+        } catch (URISyntaxException | MalformedURLException | IllegalArgumentException e) {
+            throw new ValidationException(("Некорректный URL \"%s\". "
+                    + "Url должен быть в формате http(s)://(www.)host.domain(/otional)").formatted(rawUrl));
+        }
+        return domain;
     }
 }

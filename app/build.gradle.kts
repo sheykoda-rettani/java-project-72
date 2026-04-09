@@ -30,15 +30,17 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
     testImplementation("org.junit.jupiter:junit-jupiter-params")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.assertj:assertj-core:3.27.3")
 
     implementation("io.javalin:javalin:6.6.0")
     implementation("io.javalin:javalin-bundle:6.6.0")
     implementation("io.javalin:javalin-rendering:6.6.0")
+    testImplementation("io.javalin:javalin-testtools:6.6.0")
 
     implementation("org.slf4j:slf4j-api:2.0.10")
     runtimeOnly("ch.qos.logback:logback-classic:1.5.32")
 
-    runtimeOnly("com.h2database:h2:2.3.232")
+    implementation("com.h2database:h2:2.3.232")
     runtimeOnly("org.postgresql:postgresql:42.7.9")
     implementation("com.zaxxer:HikariCP:5.1.0")
 
