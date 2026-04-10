@@ -27,14 +27,6 @@ public class BasePage {
     }
 
     /**
-     * Установка flash сообщения.
-     * @param flashMessage текст сообщения
-     */
-    public void setFlashMessage(final String flashMessage) {
-        this.flashMessage = flashMessage;
-    }
-
-    /**
      * Получение заголовка страницы.
      * @return Заголовок страницы
      */

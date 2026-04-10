@@ -48,7 +48,6 @@ final class AppTest {
 
     @BeforeEach
     public void clear() throws SQLException {
-        System.setProperty("test.mode", "true");
         app = App.getApp();
         try (Connection conn = getConnection(); Statement stmt = conn.createStatement()) {
             stmt.executeUpdate("DELETE FROM urls");

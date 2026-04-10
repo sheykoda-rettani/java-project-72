@@ -19,8 +19,4 @@ public final class UrlsPage extends BasePage {
     public List<Url> getUrls() {
         return urls;
     }
-
-    public void setUrls(final List<Url> urls) {
-        this.urls = urls;
-    }
 }
