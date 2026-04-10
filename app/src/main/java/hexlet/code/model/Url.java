@@ -8,11 +8,11 @@ public final class Url {
      */
     private Long id;
     /**
-     * Поле name.
+     * Имя url.
      */
     private String name;
     /**
-     * Поле createdAt.
+     * Время создания.
      */
     private LocalDateTime createdAt;
 
@@ -37,10 +37,6 @@ public final class Url {
 
     public String getName() {
         return name;
-    }
-
-    public void setName(final String name) {
-        this.name = name;
     }
 
     public LocalDateTime getCreatedAt() {

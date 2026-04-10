@@ -4,6 +4,7 @@ import gg.jte.ContentType;
 import gg.jte.resolve.ResourceCodeResolver;
 import hexlet.code.controller.HomeController;
 import hexlet.code.controller.UrlsController;
+import hexlet.code.exception.UrlNotFoundException;
 import hexlet.code.exception.ValidationException;
 import io.javalin.Javalin;
 import io.javalin.http.HttpStatus;
@@ -51,11 +52,22 @@ public final class App {
             HomeController.index(ctx);
         });
 
+        app.exception(UrlNotFoundException.class, (e, ctx) -> {
+            ctx.sessionAttribute("flashMessage", "Информация по странице не найдена");
+            ctx.status(HttpStatus.NOT_FOUND);
+            try {
+                UrlsController.index(ctx);
+            } catch (SQLException ex) {
+                throw new RuntimeException(ex);
+            }
+        });
+
         app.get("/", HomeController::index);
 
         app.get("/urls", UrlsController::index);
-        app.get("/urls/{id}", UrlsController::showOne);
         app.post("/urls", UrlsController::addUrl);
+        app.get("/urls/{id}", UrlsController::showOne);
+        app.post("/urls/{id}/checks", UrlsController::runCheck);
 
         return app;
     }

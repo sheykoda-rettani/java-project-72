@@ -1,13 +1,20 @@
 package hexlet.code;
 
 import hexlet.code.model.Url;
+import hexlet.code.model.UrlCheck;
+import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.Javalin;
 import io.javalin.http.HttpStatus;
 import io.javalin.testtools.JavalinTest;
+import mockwebserver3.MockResponse;
+import mockwebserver3.MockWebServer;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -17,11 +24,27 @@ import static hexlet.code.repository.BaseRepository.getConnection;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-public final class AppTest {
+final class AppTest {
     /**
      * Наше приложение для тестирования.
      */
     private static Javalin app;
+
+    /**
+     * Мок-сервер, для проверки веб-взаимодействия.
+     */
+    private static MockWebServer mockServer;
+
+    @BeforeAll
+    public static void init() throws IOException {
+        mockServer = new MockWebServer();
+        mockServer.start();
+    }
+
+    @AfterAll
+    public static void tearDown() {
+        mockServer.close();
+    }
 
     @BeforeEach
     public void clear() throws SQLException {
@@ -34,7 +57,7 @@ public final class AppTest {
 
     @Test
     public void testHomePageIsUpAndRunning() {
-        JavalinTest.test(app, (server, client) -> {
+        JavalinTest.test(app, (javalinServer, client) -> {
             var response = client.get("/");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
@@ -44,7 +67,7 @@ public final class AppTest {
 
     @Test
     public void testUrlsPageIsUpAndRunning() {
-        JavalinTest.test(app, (server, client) -> {
+        JavalinTest.test(app, (javalinServer, client) -> {
             var response = client.get("/urls");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
@@ -54,7 +77,7 @@ public final class AppTest {
 
     @Test
     public void testUrlPageIsUpAndRunning() {
-        JavalinTest.test(app, (server, client) -> {
+        JavalinTest.test(app, (javalinServer, client) -> {
             var url = new Url("https://example.com");
             UrlRepository.save(url);
             var response = client.get("/urls/" + url.getId());
@@ -65,7 +88,7 @@ public final class AppTest {
 
     @Test
     public void testNotExistingUrlPageStatusNotFound() {
-        JavalinTest.test(app, (server, client) -> {
+        JavalinTest.test(app, (javalinServer, client) -> {
             var response = client.get("/urls/999");
             assertThat(response.code()).isEqualTo(HttpStatus.NOT_FOUND.getCode());
         });
@@ -74,7 +97,7 @@ public final class AppTest {
     @Test
     public void testAddNewUrlSuccessfully() {
         final String urlToAdd = "https://ru.hexlet.io";
-        JavalinTest.test(app, (server, client) -> {
+        JavalinTest.test(app, (javalinServer, client) -> {
             try (var response = client.post("/urls", "url=" + urlToAdd)) {
                 assertThat(response.request().url().toString()).contains("urls/1");
                 assertThat(response.body()).isNotNull();
@@ -110,6 +133,53 @@ public final class AppTest {
             try (var response = client.post("/urls", "url=" + wrongUrl)) {
                 assertThat(response.code()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT.getCode());
             }
+        });
+    }
+
+    @Test
+    public void testRunCheckSuccessfullySavesDataToDb() {
+        String htmlBody = "<html><head><title>Заголовок 1</title><meta name='description' content='Содержимое'></head>"
+                + "<body><h1>Главный H1</h1></body></html>";
+        mockServer.enqueue(new MockResponse.Builder().code(HttpStatus.OK.getCode()).body(htmlBody).build());
+        var urlToCheck = mockServer.url("/works");
+        JavalinTest.test(app, (javalinServer, client) -> {
+            client.post("/urls", "url=" + urlToCheck);
+            try (var resp = client.post("/urls/1/checks")) {
+                assertThat(resp.body()).isNotNull();
+                String body = resp.body().string();
+                assertThat(body).contains("Заголовок 1");
+                assertThat(body).contains("Главный H1");
+                assertThat(body).contains("Содержимое");
+                assertThat(body).contains("Страница успешно проверена");
+            }
+            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
+            assertThat(urlChecks).isNotEmpty();
+            assertThat(urlChecks.size()).isEqualTo(1);
+        });
+    }
+
+    @Test
+    public void testFailedCheckAfterSuccessProducesCorrectMessageAndNoExtraRecords() {
+        String htmlBody = "<html><head><title>Заголовок</title><meta name='description' content='Содержимое'></head>"
+                + "<body><h1>Главный H1</h1></body></html>";
+        mockServer.enqueue(new MockResponse.Builder().code(HttpStatus.OK.getCode()).body(htmlBody).build());
+        mockServer.enqueue(new MockResponse.Builder().code(HttpStatus.BAD_REQUEST.getCode()).build());
+        var urlToCheck = mockServer.url("/works");
+        JavalinTest.test(app, (javalinServer, client) -> {
+            client.post("/urls", "url=" + urlToCheck);
+            try (var respSuccess = client.post("/urls/1/checks")) {
+                assertThat(respSuccess.body()).isNotNull();
+                String body = respSuccess.body().string();
+                assertThat(body).contains("Страница успешно проверена");
+            }
+            try (var respError = client.post("/urls/1/checks")) {
+                assertThat(respError.body()).isNotNull();
+                String body = respError.body().string();
+                assertThat(body).contains("Произошла ошибка при проверке");
+            }
+            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
+            assertThat(urlChecks).isNotEmpty();
+            assertThat(urlChecks.size()).isEqualTo(1);
         });
     }
 }

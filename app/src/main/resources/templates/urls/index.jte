@@ -13,8 +13,8 @@
         @if(urlsPage.getUrls().isEmpty())
             <div class="alert alert-info">Список пуст. Добавьте первый URL!</div>
         @else
-            <table class="table table-striped" data-test="urls">
-                <thead class="table-dark">
+            <table class="table-bordered w-100" data-test="urls">
+                <thead>
                     <tr>
                         <th>ID</th>
                         <th>Имя</th>

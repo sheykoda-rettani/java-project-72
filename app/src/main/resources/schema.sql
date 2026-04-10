@@ -1,7 +1,19 @@
+DROP TABLE IF EXISTS url_checks;
 DROP TABLE IF EXISTS urls;
 
 CREATE TABLE IF NOT EXISTS urls (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(2048) NOT NULL,
     created_at TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS url_checks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    url_id INT NOT NULL,
+    status_code INT,
+    title VARCHAR(2000),
+    h1 VARCHAR(2000),
+    description TEXT,
+    created_at TIMESTAMP,
+    FOREIGN KEY (url_id) REFERENCES urls(id) ON DELETE CASCADE
 );

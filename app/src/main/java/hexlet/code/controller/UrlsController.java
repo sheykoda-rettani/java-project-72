@@ -2,12 +2,21 @@ package hexlet.code.controller;
 
 import hexlet.code.dto.UrlPage;
 import hexlet.code.dto.UrlsPage;
+import hexlet.code.exception.UrlNotFoundException;
 import hexlet.code.exception.ValidationException;
 import hexlet.code.model.Url;
+import hexlet.code.model.UrlCheck;
+import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
+import kong.unirest.core.HttpResponse;
+import kong.unirest.core.Unirest;
 import org.jetbrains.annotations.NotNull;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -31,16 +40,37 @@ public final class UrlsController {
 
     public static void showOne(final Context ctx) throws SQLException {
         long id = ctx.pathParamAsClass("id", Long.class).get();
-        Optional<Url> urlOpt = UrlRepository.findById(id);
-        //возврат на текущую страницу. Вынос во внешний хендлер кажется не разумным
-        if (urlOpt.isEmpty()) {
-            ctx.sessionAttribute("flashMessage", "Информация по странице не найдена");
-            ctx.status(HttpStatus.NOT_FOUND);
-            index(ctx);
-            return;
-        }
-        UrlPage page = new UrlPage(ctx, urlOpt.get());
+        Url urlFound = UrlRepository.findById(id).orElseThrow(() ->
+                new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(id)));
+        List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(urlFound.getId());
+        UrlPage page = new UrlPage(ctx, urlFound, urlChecks);
         ctx.render("urls/show.jte", model("urlPage", page));
+    }
+
+    public static void runCheck(final Context ctx) throws SQLException {
+        long urlId = ctx.pathParamAsClass("id", Long.class).get();
+        Url urlFound = UrlRepository.findById(urlId).orElseThrow(() ->
+                new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(urlId)));
+        String name = urlFound.getName();
+        HttpResponse<String> response = Unirest.get(name).asString();
+        int statusCode = response.getStatus();
+        String title, h1, description;
+        if (statusCode < HttpStatus.BAD_REQUEST.getCode()) {
+            Document doc = Jsoup.parse(response.getBody());
+            title = doc.title();
+            Elements h1Tags = doc.select("h1");
+            Element h1First = h1Tags.isEmpty() ? null : h1Tags.first();
+            h1 = h1First == null ? null : h1First.text();
+            Elements metaDesc = doc.select("meta[name=description]");
+            description = metaDesc.isEmpty() ? null : metaDesc.attr("content");
+            UrlCheck check = new UrlCheck(urlId, statusCode, title, h1, description);
+            UrlCheckRepository.save(check);
+            ctx.sessionAttribute("flashMessage", "Страница успешно проверена");
+        } else {
+            ctx.sessionAttribute("flashMessage", "Произошла ошибка при проверке");
+        }
+        //в тестах, если делать редиррект изнутри контроллера не "поглощается" атрибут "flashMessage"
+        showOne(ctx);
     }
 
     public static void addUrl(final Context ctx) throws SQLException {

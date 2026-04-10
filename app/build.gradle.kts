@@ -45,6 +45,10 @@ dependencies {
     implementation("com.zaxxer:HikariCP:5.1.0")
 
     implementation("gg.jte:jte:3.2.2")
+
+    implementation("com.konghq:unirest-java-core:4.4.5")
+    implementation("org.jsoup:jsoup:1.22.1")
+    testImplementation("com.squareup.okhttp3:mockwebserver:5.3.2")
 }
 
 tasks.jacocoTestReport {
