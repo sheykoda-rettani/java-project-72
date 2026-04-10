@@ -17,7 +17,7 @@ public final class DatabaseFactory {
         if (dbUrl != null && !dbUrl.isEmpty()) {
             config.setJdbcUrl(dbUrl);
         } else {
-            config.setJdbcUrl("jdbc:h2:mem:test-db;DB_CLOSE_DELAY=-1");
+            config.setJdbcUrl("jdbc:h2:mem:test-db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL");
         }
 
         config.setMaximumPoolSize(maximumPoolSize);

@@ -83,8 +83,8 @@ public final class App {
 
         LOGGER.info("Инициализация БД:");
         LOGGER.info("Исполнение запроса {}", sql);
-        try (Connection conn = getConnection()) {
-            Statement statement = conn.createStatement();
+        try (Connection conn = getConnection();
+             Statement statement = conn.createStatement()) {
             statement.execute(sql);
         }
     }
