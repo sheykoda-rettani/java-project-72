@@ -40,8 +40,15 @@ public final class UrlsController {
 
     public static void showOne(final Context ctx) throws SQLException {
         long id = ctx.pathParamAsClass("id", Long.class).get();
-        Url urlFound = UrlRepository.findById(id).orElseThrow(() ->
-                new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(id)));
+        Url urlFound;
+        try {
+            urlFound = UrlRepository.findById(id).orElseThrow(() ->
+                    new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(id)));
+        } catch (UrlNotFoundException e) {
+            ctx.sessionAttribute("flashMessage", e.getMessage());
+            index(ctx);
+            return;
+        }
         List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(urlFound.getId());
         UrlPage page = new UrlPage(ctx, urlFound, urlChecks);
         ctx.render("urls/show.jte", model("urlPage", page));
@@ -69,13 +76,20 @@ public final class UrlsController {
         } else {
             ctx.sessionAttribute("flashMessage", "Произошла ошибка при проверке");
         }
-        //в тестах, если делать редиррект изнутри контроллера не "поглощается" атрибут "flashMessage"
-        showOne(ctx);
+        ctx.redirect("/urls/" + urlId);
     }
 
     public static void addUrl(final Context ctx) throws SQLException {
         String rawUrl = ctx.formParam("url");
-        String domain = getDomain(rawUrl);
+        String domain;
+        try {
+            domain = getDomain(rawUrl);
+        } catch (ValidationException e) {
+            ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
+            ctx.sessionAttribute("flashMessage", e.getMessage());
+            index(ctx);
+            return;
+        }
 
         Optional<Url> existingUrlOpt = UrlRepository.findByName(domain);
         if (existingUrlOpt.isPresent()) {

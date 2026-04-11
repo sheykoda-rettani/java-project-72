@@ -4,10 +4,7 @@ import gg.jte.ContentType;
 import gg.jte.resolve.ResourceCodeResolver;
 import hexlet.code.controller.HomeController;
 import hexlet.code.controller.UrlsController;
-import hexlet.code.exception.UrlNotFoundException;
-import hexlet.code.exception.ValidationException;
 import io.javalin.Javalin;
-import io.javalin.http.HttpStatus;
 import io.javalin.rendering.template.JavalinJte;
 import gg.jte.TemplateEngine;
 import org.slf4j.Logger;
@@ -43,23 +40,6 @@ public final class App {
 
         app.before(ctx -> {
             ctx.contentType("text/html; charset=utf-8");
-        });
-
-        //верхнеуровневый хэндлинг exception из контроллера. Выставление 422 тут
-        app.exception(ValidationException.class, (e, ctx) -> {
-            ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
-            ctx.sessionAttribute("flashMessage", e.getMessage());
-            HomeController.index(ctx);
-        });
-
-        app.exception(UrlNotFoundException.class, (e, ctx) -> {
-            ctx.sessionAttribute("flashMessage", "Информация по странице не найдена");
-            ctx.status(HttpStatus.NOT_FOUND);
-            try {
-                UrlsController.index(ctx);
-            } catch (SQLException ex) {
-                throw new RuntimeException(ex);
-            }
         });
 
         app.get("/", HomeController::index);

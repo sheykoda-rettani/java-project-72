@@ -5,34 +5,32 @@
 @param UrlsPage urlsPage
 
 @template.layout.layout(
-    page = urlsPage,
-    content = @`
-        <h1 class="display-4">Список добавленных URL</h1>
-        <a href="/" class="btn btn-secondary mb-3">Добавить новый URL</a>
-
-        @if(urlsPage.getUrls().isEmpty())
-            <div class="alert alert-info">Список пуст. Добавьте первый URL!</div>
-        @else
-            <table class="table-bordered w-100" data-test="urls">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Имя</th>
-                        <th>Дата создания</th>
-                        <th>Код ответа</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @for(var url : urlsPage.getUrls())
-                        <tr>
-                            <td>${url.getId()}</td>
-                            <td><a href="/urls/${url.getId()}">${url.getName()}</a></td>
-                            <td>${url.getCreatedAt().format(PAGE_DATE_FORMATTER)}</td>
-                            <td>-</td> <!-- Код ответа будет добавлен позже -->
-                        </tr>
-                    @endfor
-                </tbody>
-            </table>
-        @endif
-    `
+page = urlsPage,
+content = @`
+    <h1 class="display-4">Список добавленных URL</h1>
+    <a href="/" class="btn btn-secondary mb-3">Добавить новый URL</a>
+    <table class="table-bordered w-100" data-test="urls">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Имя</th>
+            <th>Дата создания</th>
+            <th>Код ответа</th>
+        </tr>
+        </thead>
+        <tbody>
+        @for(var url : urlsPage.getUrls())
+            <tr>
+                <td>${url.getId()}</td>
+                <td><a href="/urls/${url.getId()}">${url.getName()}</a></td>
+                <td>${url.getCreatedAt().format(PAGE_DATE_FORMATTER)}</td>
+                <td>-</td> <!-- Код ответа будет добавлен позже -->
+            </tr>
+        @endfor
+        </tbody>
+    </table>
+    @if(urlsPage.getUrls().isEmpty())
+        <div class="alert alert-info">Список пуст. Добавьте первый URL!</div>
+    @endif
+`
 )

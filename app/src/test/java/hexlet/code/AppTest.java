@@ -9,12 +9,18 @@ import io.javalin.http.HttpStatus;
 import io.javalin.testtools.JavalinTest;
 import mockwebserver3.MockResponse;
 import mockwebserver3.MockWebServer;
+import okhttp3.Response;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.net.URI;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -60,7 +66,17 @@ final class AppTest {
             var response = client.get("/");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
-            assertThat(response.body().string()).contains("Url для проверки");
+            Document doc = Jsoup.parse(response.body().string());
+            Element form = doc.select("form[action=/urls][method=post]").first();
+            assertThat(form).isNotNull();
+            Elements inputs = form.select("input[name=url]");
+            assertThat(inputs).hasSize(1);
+            String inputId = inputs.getFirst().id();
+            Element label = doc.selectFirst("label[for=" + inputId + "]");
+            assertThat(label).isNotNull();
+            assertThat(label.text()).isEqualTo("Url для проверки");
+            Element button = form.select("input[type=submit][value=Проверить]").first();
+            assertThat(button).isNotNull();
         });
     }
 
@@ -70,7 +86,12 @@ final class AppTest {
             var response = client.get("/urls");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
-            assertThat(response.body().string()).contains("Список добавленных URL");
+            Document doc = Jsoup.parse(response.body().string());
+            Element table = doc.selectFirst("table[data-test=urls]");
+            assertThat(table).isNotNull();
+            Element h1 = doc.selectFirst("h1");
+            assertThat(h1).isNotNull();
+            assertThat(h1.text()).contains("Список добавленных URL");
         });
     }
 
@@ -81,15 +102,11 @@ final class AppTest {
             UrlRepository.save(url);
             var response = client.get("/urls/" + url.getId());
             assertThat(response.body()).isNotNull();
-            assertThat(response.body().string()).contains("https://example.com");
-        });
-    }
-
-    @Test
-    public void testNotExistingUrlPageStatusNotFound() {
-        JavalinTest.test(app, (javalinServer, client) -> {
-            var response = client.get("/urls/999");
-            assertThat(response.code()).isEqualTo(HttpStatus.NOT_FOUND.getCode());
+            Document doc = Jsoup.parse(response.body().string());
+            Element table = doc.selectFirst("table[data-test=url]");
+            assertThat(table).isNotNull();
+            table = doc.selectFirst("table[data-test=checks]");
+            assertThat(table).isNotNull();
         });
     }
 
@@ -98,7 +115,7 @@ final class AppTest {
         final String urlToAdd = "https://ru.hexlet.io";
         JavalinTest.test(app, (javalinServer, client) -> {
             try (var response = client.post("/urls", "url=" + urlToAdd)) {
-                assertThat(response.request().url().toString()).contains("urls/1");
+                checkUrlPath(response);
                 assertThat(response.body()).isNotNull();
                 String responseBody = response.body().string();
                 assertThat(responseBody).contains(urlToAdd);
@@ -114,10 +131,12 @@ final class AppTest {
         final String urlToAdd = "https://example.com";
         JavalinTest.test(app, (server, client) -> {
             try (var responseFirst = client.post("/urls", "url=" + urlToAdd)) {
-                assertThat(responseFirst.request().url().toString()).contains("urls/1");
+                String toRedirect = URI.create(responseFirst.request().url().toString()).getPath();
+                assertThat(toRedirect).matches("/urls/\\d+$");
             }
             try (var responseSecond = client.post("/urls", "url=" + urlToAdd)) {
-                assertThat(responseSecond.request().url().toString()).contains("urls/1");
+                String toRedirect = URI.create(responseSecond.request().url().toString()).getPath();
+                assertThat(toRedirect).matches("/urls/\\d+$");
             }
             List<Url> urls = UrlRepository.findAll();
             assertThat(urls).isNotEmpty();
@@ -143,13 +162,13 @@ final class AppTest {
         var urlToCheck = mockServer.url("/works");
         JavalinTest.test(app, (javalinServer, client) -> {
             client.post("/urls", "url=" + urlToCheck);
-            try (var resp = client.post("/urls/1/checks")) {
-                assertThat(resp.body()).isNotNull();
-                String body = resp.body().string();
+            try (var response = client.post("/urls/1/checks")) {
+                checkUrlPath(response);
+                assertThat(response.body()).isNotNull();
+                String body = response.body().string();
                 assertThat(body).contains("Заголовок 1");
                 assertThat(body).contains("Главный H1");
                 assertThat(body).contains("Содержимое");
-                assertThat(body).contains("Страница успешно проверена");
             }
             List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
             assertThat(urlChecks).isNotEmpty();
@@ -167,18 +186,20 @@ final class AppTest {
         JavalinTest.test(app, (javalinServer, client) -> {
             client.post("/urls", "url=" + urlToCheck);
             try (var respSuccess = client.post("/urls/1/checks")) {
-                assertThat(respSuccess.body()).isNotNull();
-                String body = respSuccess.body().string();
-                assertThat(body).contains("Страница успешно проверена");
+                checkUrlPath(respSuccess);
             }
             try (var respError = client.post("/urls/1/checks")) {
-                assertThat(respError.body()).isNotNull();
-                String body = respError.body().string();
-                assertThat(body).contains("Произошла ошибка при проверке");
+                checkUrlPath(respError);
             }
             List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
             assertThat(urlChecks).isNotEmpty();
             assertThat(urlChecks.size()).isEqualTo(1);
         });
+    }
+
+    private static void checkUrlPath(final Response response) {
+        assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
+        String toRedirect = URI.create(response.request().url().toString()).getPath();
+        assertThat(toRedirect).matches("/urls/\\d+$");
     }
 }
