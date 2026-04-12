@@ -60,15 +60,14 @@ public final class UrlsController {
         String name = urlFound.getName();
         HttpResponse<String> response = Unirest.get(name).asString();
         int statusCode = response.getStatus();
-        String title, h1, description;
         if (statusCode < HttpStatus.BAD_REQUEST.getCode()) {
             Document doc = Jsoup.parse(response.getBody());
-            title = doc.title();
+            String title = doc.title();
             Elements h1Tags = doc.select("h1");
             Element h1First = h1Tags.isEmpty() ? null : h1Tags.first();
-            h1 = h1First == null ? null : h1First.text();
+            String h1 = h1First == null ? null : h1First.text();
             Elements metaDesc = doc.select("meta[name=description]");
-            description = metaDesc.isEmpty() ? null : metaDesc.attr("content");
+            String description = metaDesc.isEmpty() ? null : metaDesc.attr("content");
             UrlCheck check = new UrlCheck(urlId, statusCode, title, h1, description);
             UrlCheckRepository.save(check);
             ctx.sessionAttribute("flashMessage", "Страница успешно проверена");
