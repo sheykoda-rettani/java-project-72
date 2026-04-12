@@ -24,7 +24,7 @@ content = @`
                 <td>${url.getId()}</td>
                 <td><a href="/urls/${url.getId()}">${url.getName()}</a></td>
                 <td>${url.getCreatedAt().format(PAGE_DATE_FORMATTER)}</td>
-                <td>-</td> <!-- Код ответа будет добавлен позже -->
+                <td>${url.getLastStatus()}</td>
             </tr>
         @endfor
         </tbody>

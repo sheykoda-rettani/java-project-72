@@ -24,7 +24,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
-import java.util.Optional;
 
 import static io.javalin.rendering.template.TemplateUtil.model;
 
@@ -91,9 +90,8 @@ public final class UrlsController {
             return;
         }
 
-        Optional<Url> existingUrlOpt = UrlRepository.findByName(domain);
-        if (existingUrlOpt.isPresent()) {
-            Long existingId = existingUrlOpt.get().getId();
+        Long existingId = UrlRepository.getIdByName(domain);
+        if (existingId != null) {
             ctx.sessionAttribute("flashMessage", "Страница уже существует");
             ctx.redirect("/urls/" + existingId);
             return;

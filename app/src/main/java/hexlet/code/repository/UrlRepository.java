@@ -16,6 +16,15 @@ import java.util.Optional;
 public final class UrlRepository extends BaseRepository {
     private UrlRepository() { }
 
+    /**
+     * Основной запрос на URL + статус.
+     */
+    private static final String MAIN_URL_QUERY = "SELECT u.*, "
+            + "("
+            + "SELECT status_code from url_checks uc "
+            + "WHERE uc.url_id = u.id ORDER BY uc.created_at DESC LIMIT 1"
+            + ") as status_code  FROM urls u ";
+
     public static void save(final Url url) throws SQLException {
         String sql = "INSERT INTO urls(name, created_at) VALUES (?, ?)";
         try (Connection conn = getConnection();
@@ -38,7 +47,7 @@ public final class UrlRepository extends BaseRepository {
     }
 
     public static List<Url> findAll() throws SQLException {
-        String sql = "SELECT * FROM urls ORDER BY created_at DESC";
+        String sql = MAIN_URL_QUERY + "ORDER BY u.created_at DESC";
         List<Url> urls = new ArrayList<>();
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -48,14 +57,15 @@ public final class UrlRepository extends BaseRepository {
                 long id = rs.getLong("id");
                 String name = rs.getString("name");
                 LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-                urls.add(new Url(id, name, createdAt));
+                Integer statusCode = rs.getInt("status_code");
+                urls.add(new Url(id, name, createdAt, statusCode));
             }
         }
         return urls;
     }
 
     public static Optional<Url> findById(final long id) throws SQLException {
-        String sql = "SELECT * FROM urls WHERE id = ?";
+        String sql = MAIN_URL_QUERY + "WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -64,41 +74,24 @@ public final class UrlRepository extends BaseRepository {
                 if (rs.next()) {
                     String name = rs.getString("name");
                     LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-                    return Optional.of(new Url(id, name, createdAt));
+                    return Optional.of(new Url(id, name, createdAt, null));
                 }
             }
         }
         return Optional.empty();
     }
 
-    public static boolean existsByName(final String name) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM urls WHERE name = ?";
-        try (Connection conn = getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, name);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getInt(1) > 0;
-                }
-            }
-        }
-        return false;
-    }
-
-    public static Optional<Url> findByName(final String name) throws SQLException {
-        String sql = "SELECT * FROM urls WHERE name = ?";
+    public static Long getIdByName(final String name) throws SQLException {
+        String sql = "SELECT id FROM urls WHERE name = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, name);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    long id = rs.getLong("id");
-                    LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-                    return Optional.of(new Url(id, name, createdAt));
+                    return rs.getLong("id");
                 }
             }
         }
-        return Optional.empty();
+        return null;
     }
 }
