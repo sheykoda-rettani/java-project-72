@@ -81,17 +81,17 @@ public final class UrlRepository extends BaseRepository {
         return Optional.empty();
     }
 
-    public static Long getIdByName(final String name) throws SQLException {
+    public static Optional<Long> getIdByName(final String name) throws SQLException {
         String sql = "SELECT id FROM urls WHERE name = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
             stmt.setString(1, name);
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getLong("id");
+                    return Optional.of(rs.getLong("id"));
                 }
             }
         }
-        return null;
+        return Optional.empty();
     }
 }

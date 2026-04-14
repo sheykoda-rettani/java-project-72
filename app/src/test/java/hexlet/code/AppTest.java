@@ -13,7 +13,6 @@ import okhttp3.Response;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,17 +65,23 @@ final class AppTest {
             var response = client.get("/");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
-            Document doc = Jsoup.parse(response.body().string());
-            Element form = doc.select("form[action=/urls][method=post]").first();
-            assertThat(form).isNotNull();
-            Elements inputs = form.select("input[name=url]");
-            assertThat(inputs).hasSize(1);
-            String inputId = inputs.getFirst().id();
-            Element label = doc.selectFirst("label[for=" + inputId + "]");
-            assertThat(label).isNotNull();
-            assertThat(label.text()).isEqualTo("Url для проверки");
-            Element button = form.select("input[type=submit][value=Проверить]").first();
-            assertThat(button).isNotNull();
+            String body = response.body().string();
+            assertThat(body).containsPattern(
+                    "<a[^>]*class=[\"']?navbar-brand[\"']?[^>]*>Анализатор страниц</a>"
+            );
+            assertThat(body).containsPattern(
+                    "<form[^>]*action=[\"']?/urls[\"']?[^>]*method=[\"']?post[\"']?[^>]*>"
+            );
+            assertThat(body).containsPattern(
+                    "<input[^>]*type=[\"']?text[\"']?[^>]*name=[\"']?url[\"']?[^>]*>"
+            );
+            assertThat(body).containsPattern(
+                    "<label[^>]*for=[\"']?url-name[\"']?[^>]*class=[\"']?visually-hidden[\"']?[^>]*>"
+                            + "Url для проверки</label>"
+            );
+            assertThat(body).containsPattern(
+                    "<input[^>]*type=[\"']?submit[\"']?[^>]*value=[\"']?Проверить[\"']?[^>]*>"
+            );
         });
     }
 
@@ -86,7 +91,8 @@ final class AppTest {
             var response = client.get("/urls");
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
-            Document doc = Jsoup.parse(response.body().string());
+            String body = response.body().string();
+            Document doc = Jsoup.parse(body);
             Element table = doc.selectFirst("table[data-test=urls]");
             assertThat(table).isNotNull();
             Element h1 = doc.selectFirst("h1");
@@ -102,11 +108,12 @@ final class AppTest {
             UrlRepository.save(url);
             var response = client.get("/urls/" + url.getId());
             assertThat(response.body()).isNotNull();
-            Document doc = Jsoup.parse(response.body().string());
-            Element table = doc.selectFirst("table[data-test=url]");
-            assertThat(table).isNotNull();
-            table = doc.selectFirst("table[data-test=checks]");
-            assertThat(table).isNotNull();
+            String body = response.body().string();
+            Document doc = Jsoup.parse(body);
+            Element tableUrl = doc.selectFirst("table[data-test=url]");
+            assertThat(tableUrl).isNotNull();
+            Element tableChecks = doc.selectFirst("table[data-test=checks]");
+            assertThat(tableChecks).isNotNull();
         });
     }
 

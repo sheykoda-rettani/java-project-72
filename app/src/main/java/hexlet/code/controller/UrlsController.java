@@ -2,7 +2,6 @@ package hexlet.code.controller;
 
 import hexlet.code.dto.UrlPage;
 import hexlet.code.dto.UrlsPage;
-import hexlet.code.exception.UrlNotFoundException;
 import hexlet.code.exception.ValidationException;
 import hexlet.code.model.Url;
 import hexlet.code.model.UrlCheck;
@@ -10,8 +9,11 @@ import hexlet.code.repository.UrlCheckRepository;
 import hexlet.code.repository.UrlRepository;
 import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
+import io.javalin.http.NotFoundResponse;
 import kong.unirest.core.HttpResponse;
 import kong.unirest.core.Unirest;
+import kong.unirest.core.UnirestException;
+import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -24,11 +26,14 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Optional;
 
 import static io.javalin.rendering.template.TemplateUtil.model;
 
+@Slf4j
 public final class UrlsController {
-    private UrlsController() { }
+    private UrlsController() {
+    }
 
     public static void index(final Context ctx) throws SQLException {
         List<Url> urls = UrlRepository.findAll();
@@ -39,15 +44,9 @@ public final class UrlsController {
 
     public static void showOne(final Context ctx) throws SQLException {
         long id = ctx.pathParamAsClass("id", Long.class).get();
-        Url urlFound;
-        try {
-            urlFound = UrlRepository.findById(id).orElseThrow(() ->
-                    new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(id)));
-        } catch (UrlNotFoundException e) {
-            ctx.sessionAttribute("flashMessage", e.getMessage());
-            index(ctx);
-            return;
-        }
+        Url urlFound = UrlRepository.findById(id).orElseThrow(() ->
+                new NotFoundResponse("Информация по странице с id %d не найдена".formatted(id)));
+
         List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(urlFound.getId());
         UrlPage page = new UrlPage(ctx, urlFound, urlChecks);
         ctx.render("urls/show.jte", model("urlPage", page));
@@ -56,23 +55,28 @@ public final class UrlsController {
     public static void runCheck(final Context ctx) throws SQLException {
         long urlId = ctx.pathParamAsClass("id", Long.class).get();
         Url urlFound = UrlRepository.findById(urlId).orElseThrow(() ->
-                new UrlNotFoundException("Информация по странице с id %d не найдена".formatted(urlId)));
+                new NotFoundResponse("Информация по странице с id %d не найдена".formatted(urlId)));
         String name = urlFound.getName();
-        HttpResponse<String> response = Unirest.get(name).asString();
-        int statusCode = response.getStatus();
-        if (statusCode < HttpStatus.BAD_REQUEST.getCode()) {
-            Document doc = Jsoup.parse(response.getBody());
-            String title = doc.title();
-            Elements h1Tags = doc.select("h1");
-            Element h1First = h1Tags.isEmpty() ? null : h1Tags.first();
-            String h1 = h1First == null ? null : h1First.text();
-            Elements metaDesc = doc.select("meta[name=description]");
-            String description = metaDesc.isEmpty() ? null : metaDesc.attr("content");
-            UrlCheck check = new UrlCheck(urlId, statusCode, title, h1, description);
-            UrlCheckRepository.save(check);
-            ctx.sessionAttribute("flashMessage", "Страница успешно проверена");
-        } else {
-            ctx.sessionAttribute("flashMessage", "Произошла ошибка при проверке");
+        try {
+            HttpResponse<String> response = Unirest.get(name).asString();
+            int statusCode = response.getStatus();
+            if (statusCode < HttpStatus.BAD_REQUEST.getCode()) {
+                Document doc = Jsoup.parse(response.getBody());
+                String title = doc.title();
+                Elements h1Tags = doc.select("h1");
+                Element h1First = h1Tags.isEmpty() ? null : h1Tags.first();
+                String h1 = h1First == null ? null : h1First.text();
+                Elements metaDesc = doc.select("meta[name=description]");
+                String description = metaDesc.isEmpty() ? null : metaDesc.attr("content");
+                UrlCheck check = new UrlCheck(urlId, statusCode, title, h1, description);
+                UrlCheckRepository.save(check);
+                ctx.sessionAttribute("flashMessage", "Страница успешно проверена");
+            } else {
+                ctx.sessionAttribute("flashMessage", "Произошла ошибка при проверке");
+            }
+        } catch (UnirestException e) {
+            ctx.sessionAttribute("flashMessage", "Произошла ошибка при попытке обратиться к ресурсу %s".
+                    formatted(urlFound.getName()));
         }
         ctx.redirect("/urls/" + urlId);
     }
@@ -82,17 +86,18 @@ public final class UrlsController {
         String domain;
         try {
             domain = getDomain(rawUrl);
-        } catch (ValidationException e) {
+            //Все exception пока обрабатываются одинаково. При необходимости потом разделить
+        } catch (ValidationException | URISyntaxException | MalformedURLException | IllegalArgumentException e) {
             ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
             ctx.sessionAttribute("flashMessage", e.getMessage());
             index(ctx);
             return;
         }
 
-        Long existingId = UrlRepository.getIdByName(domain);
-        if (existingId != null) {
+        Optional<Long> existingIdOpt = UrlRepository.getIdByName(domain);
+        if (existingIdOpt.isPresent()) {
             ctx.sessionAttribute("flashMessage", "Страница уже существует");
-            ctx.redirect("/urls/" + existingId);
+            ctx.redirect("/urls/" + existingIdOpt.get());
             return;
         }
 
@@ -105,22 +110,17 @@ public final class UrlsController {
     }
 
     @NotNull
-    private static String getDomain(final String rawUrl) {
+    private static String getDomain(final String rawUrl) throws URISyntaxException, MalformedURLException {
         String domain;
-        try {
-            if (rawUrl == null || rawUrl.trim().isEmpty()) {
-                throw new ValidationException("URL не может быть пустым");
-            }
-            URI uri = new URI(rawUrl);
-            URL parsedUrl = uri.toURL();
-            domain = parsedUrl.getProtocol() + "://" + parsedUrl.getHost();
-            int port = parsedUrl.getPort();
-            if (port != -1 && port != parsedUrl.getDefaultPort()) {
-                domain += ":" + port;
-            }
-        } catch (URISyntaxException | MalformedURLException | IllegalArgumentException e) {
-            throw new ValidationException(("Некорректный URL \"%s\". "
-                    + "Url должен быть в формате http(s)://(www.)host.domain(/otional)").formatted(rawUrl));
+        if (rawUrl == null || rawUrl.trim().isEmpty()) {
+            throw new ValidationException("URL не может быть пустым");
+        }
+        URI uri = new URI(rawUrl);
+        URL parsedUrl = uri.toURL();
+        domain = parsedUrl.getProtocol() + "://" + parsedUrl.getHost();
+        int port = parsedUrl.getPort();
+        if (port != -1 && port != parsedUrl.getDefaultPort()) {
+            domain += ":" + port;
         }
         return domain;
     }

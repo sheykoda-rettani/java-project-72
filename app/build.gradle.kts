@@ -5,6 +5,7 @@ plugins {
     id("org.sonarqube") version "7.1.0.6387"
     id("jacoco")
     id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("io.freefair.lombok") version "9.2.0"
 }
 
 group = "hexlet.code"

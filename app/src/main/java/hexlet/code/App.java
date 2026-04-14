@@ -7,8 +7,7 @@ import hexlet.code.controller.UrlsController;
 import io.javalin.Javalin;
 import io.javalin.rendering.template.JavalinJte;
 import gg.jte.TemplateEngine;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -21,14 +20,10 @@ import java.util.stream.Collectors;
 
 import static hexlet.code.repository.BaseRepository.getConnection;
 
+@Slf4j
 public final class App {
     private App() {
     }
-
-    /**
-     * Логирование.
-     */
-    private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
 
     public static Javalin getApp() throws SQLException {
         initDb();
@@ -57,12 +52,12 @@ public final class App {
         try {
             sql = readResourceFile("schema.sql");
         } catch (IOException e) {
-            LOGGER.error("Ощибка во время чтения файла схемы", e);
+            log.error("Ощибка во время чтения файла схемы", e);
             return;
         }
 
-        LOGGER.info("Инициализация БД:");
-        LOGGER.info("Исполнение запроса {}", sql);
+        log.info("Инициализация БД:");
+        log.info("Исполнение запроса {}", sql);
         try (Connection conn = getConnection();
              Statement statement = conn.createStatement()) {
             statement.execute(sql);
@@ -84,17 +79,17 @@ public final class App {
         try {
             if (portEnv != null && !portEnv.isEmpty()) {
                 port = Integer.parseInt(portEnv);
-                LOGGER.info("Используется порт из переменной окружения PORT: {}", port);
+                log.info("Используется порт из переменной окружения PORT: {}", port);
             } else {
-                LOGGER.info("Переменная окружения PORT не задана. Используется порт по умолчанию: {}", port);
+                log.info("Переменная окружения PORT не задана. Используется порт по умолчанию: {}", port);
             }
         } catch (NumberFormatException e) {
-            LOGGER.warn("Переменная окружения PORT содержит неверное значение '{}'. Используется порт по умолчанию: {}",
+            log.warn("Переменная окружения PORT содержит неверное значение '{}'. Используется порт по умолчанию: {}",
                     portEnv, port);
         }
         Javalin appInstance = getApp();
         appInstance.start(port);
-        LOGGER.info("Приложение запущено на порту {}", port);
+        log.info("Приложение запущено на порту {}", port);
     }
 
     private static TemplateEngine createTemplateEngine() {
