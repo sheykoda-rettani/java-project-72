@@ -86,10 +86,16 @@ public final class UrlsController {
         String domain;
         try {
             domain = getDomain(rawUrl);
-            //Все exception пока обрабатываются одинаково. При необходимости потом разделить
-        } catch (ValidationException | URISyntaxException | MalformedURLException | IllegalArgumentException e) {
+        } catch (ValidationException e) {
             ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
-            ctx.sessionAttribute("flashMessage", e.getMessage());
+            ctx.sessionAttribute("flashMessage", "URl не может быть пустым");
+            index(ctx);
+            return;
+        } catch (URISyntaxException | MalformedURLException | IllegalArgumentException e) {
+            ctx.status(HttpStatus.UNPROCESSABLE_CONTENT);
+            String message = "Некорректный URL \"%s\". Url должен быть в формате http(s)://(www.)host.domain(/otional)".
+                    formatted(rawUrl);
+            ctx.sessionAttribute("flashMessage", message);
             index(ctx);
             return;
         }
