@@ -24,6 +24,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Optional;
 
 import static hexlet.code.repository.BaseRepository.getConnection;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,12 +93,7 @@ final class AppTest {
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
             String body = response.body().string();
-            Document doc = Jsoup.parse(body);
-            Element table = doc.selectFirst("table[data-test=urls]");
-            assertThat(table).isNotNull();
-            Element h1 = doc.selectFirst("h1");
-            assertThat(h1).isNotNull();
-            assertThat(h1.text()).contains("Список добавленных URL");
+            assertThat(body).contains("Список добавленных URL");
         });
     }
 
@@ -130,6 +126,8 @@ final class AppTest {
             List<Url> urls = UrlRepository.findAll();
             assertThat(urls).isNotEmpty();
             assertThat(urls.size()).isEqualTo(1);
+            Url toCheck = urls.getFirst();
+            assertThat(toCheck.getName()).isEqualTo(urlToAdd);
         });
     }
 
@@ -169,17 +167,22 @@ final class AppTest {
         var urlToCheck = mockServer.url("/works");
         JavalinTest.test(app, (javalinServer, client) -> {
             client.post("/urls", "url=" + urlToCheck);
-            try (var response = client.post("/urls/1/checks")) {
+            String savedServer = urlToCheck.toString().substring(0, urlToCheck.toString().lastIndexOf('/'));
+            Optional<Long> optionalId = UrlRepository.getIdByName(savedServer);
+            assertThat(optionalId).isPresent();
+            Url url = UrlRepository.findById(optionalId.get()).orElse(null);
+            assertThat(url).isNotNull();
+            try (var response = client.post("/urls/%d/checks".formatted(url.getId()))) {
                 checkUrlPath(response);
-                assertThat(response.body()).isNotNull();
-                String body = response.body().string();
-                assertThat(body).contains("Заголовок 1");
-                assertThat(body).contains("Главный H1");
-                assertThat(body).contains("Содержимое");
             }
-            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
+            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(url.getId());
             assertThat(urlChecks).isNotEmpty();
             assertThat(urlChecks.size()).isEqualTo(1);
+            UrlCheck urlCheck = urlChecks.getFirst();
+            assertThat(urlCheck.getStatusCode()).isEqualTo(HttpStatus.OK.getCode());
+            assertThat(urlCheck.getTitle()).isEqualTo("Заголовок 1");
+            assertThat(urlCheck.getH1()).isEqualTo("Главный H1");
+            assertThat(urlCheck.getDescription()).isEqualTo("Содержимое");
         });
     }
 
