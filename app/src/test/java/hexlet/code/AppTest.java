@@ -182,10 +182,15 @@ final class AppTest {
         var urlToCheck = mockServer.url("/works");
         JavalinTest.test(app, (javalinServer, client) -> {
             client.post("/urls", "url=" + urlToCheck);
-            try (var respSuccess = client.post("/urls/1/checks")) {
+            String savedServer = urlToCheck.toString().substring(0, urlToCheck.toString().lastIndexOf('/'));
+            Optional<Long> optionalId = UrlRepository.getIdByName(savedServer);
+            assertThat(optionalId).isPresent();
+            Url url = UrlRepository.findById(optionalId.get()).orElse(null);
+            assertThat(url).isNotNull();
+            try (var respSuccess = client.post("/urls/%d/checks".formatted(url.getId()))) {
                 checkUrlPath(respSuccess);
             }
-            try (var respError = client.post("/urls/1/checks")) {
+            try (var respError = client.post("/urls/%d/checks".formatted(url.getId()))) {
                 checkUrlPath(respError);
             }
             List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
