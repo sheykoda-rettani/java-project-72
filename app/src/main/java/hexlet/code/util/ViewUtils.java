@@ -8,7 +8,7 @@ public final class ViewUtils {
     /**
      * Форматирование даты для вывода на страницах.
      */
-    public static final DateTimeFormatter PAGE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public static final DateTimeFormatter PAGE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static String truncateWithEllipsis(final String toTruncate, final int length)
             throws IllegalArgumentException {

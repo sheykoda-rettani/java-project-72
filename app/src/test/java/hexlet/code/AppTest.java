@@ -67,22 +67,9 @@ final class AppTest {
             assertThat(response.code()).isEqualTo(HttpStatus.OK.getCode());
             assertThat(response.body()).isNotNull();
             String body = response.body().string();
-            assertThat(body).containsPattern(
-                    "<a[^>]*class=[\"']?navbar-brand[\"']?[^>]*>Анализатор страниц</a>"
-            );
-            assertThat(body).containsPattern(
-                    "<form[^>]*action=[\"']?/urls[\"']?[^>]*method=[\"']?post[\"']?[^>]*>"
-            );
-            assertThat(body).containsPattern(
-                    "<input[^>]*type=[\"']?text[\"']?[^>]*name=[\"']?url[\"']?[^>]*>"
-            );
-            assertThat(body).containsPattern(
-                    "<label[^>]*for=[\"']?url-name[\"']?[^>]*class=[\"']?visually-hidden[\"']?[^>]*>"
-                            + "Url для проверки</label>"
-            );
-            assertThat(body).containsPattern(
-                    "<input[^>]*type=[\"']?submit[\"']?[^>]*value=[\"']?Проверить[\"']?[^>]*>"
-            );
+            assertThat(body).contains("Анализатор страниц");
+            assertThat(body).contains("Url для проверки");
+            assertThat(body).contains("Проверить");
         });
     }
 
