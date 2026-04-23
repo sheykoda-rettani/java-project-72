@@ -15,6 +15,7 @@ content = @`
             <th>ID</th>
             <th>Имя</th>
             <th>Дата создания</th>
+            <th>Последняя проверка</th>
             <th>Код ответа</th>
         </tr>
         </thead>
@@ -24,6 +25,7 @@ content = @`
                 <td>${url.getId()}</td>
                 <td><a href="/urls/${url.getId()}">${url.getName()}</a></td>
                 <td>${url.getCreatedAt().format(PAGE_DATE_FORMATTER)}</td>
+                <td>${url.getLastCheckAt() == null ? null : url.getLastCheckAt().format(PAGE_DATE_FORMATTER)}</td>
                 <td>${url.getLastStatus()}</td>
             </tr>
         @endfor

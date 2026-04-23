@@ -1,7 +1,12 @@
 package hexlet.code.model;
 
+import lombok.Getter;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 
+@Getter
+@Setter
 public final class Url {
     /**
      * Поле id.
@@ -15,6 +20,10 @@ public final class Url {
      * Время создания.
      */
     private LocalDateTime createdAt;
+    /**
+     * Время последней проверки.
+     */
+    private LocalDateTime lastCheckAt;
     /**
      * Самый свежий статус проверки.
      */
@@ -30,29 +39,5 @@ public final class Url {
         this.name = aName;
         this.createdAt = aCreatedAt;
         this.lastStatus = aLastStatus;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(final Long id) {
-        this.id = id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(final LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
-    public Integer getLastStatus() {
-        return lastStatus;
     }
 }

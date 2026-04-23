@@ -193,7 +193,7 @@ final class AppTest {
             try (var respError = client.post("/urls/%d/checks".formatted(url.getId()))) {
                 checkUrlPath(respError);
             }
-            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(1L);
+            List<UrlCheck> urlChecks = UrlCheckRepository.findByUrlId(url.getId());
             assertThat(urlChecks).isNotEmpty();
             assertThat(urlChecks.size()).isEqualTo(1);
         });

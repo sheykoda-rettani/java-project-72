@@ -19,11 +19,23 @@ public final class UrlRepository extends BaseRepository {
     /**
      * Основной запрос на URL + статус.
      */
-    private static final String MAIN_URL_QUERY = "SELECT u.*, "
-            + "("
-            + "SELECT status_code from url_checks uc "
-            + "WHERE uc.url_id = u.id ORDER BY uc.created_at DESC LIMIT 1"
-            + ") as status_code  FROM urls u ";
+    private static final String MAIN_URL_QUERY = """
+            SELECT
+                u.*
+                , last_check.status_code
+                , last_check.created_at AS last_check_at
+                FROM urls u
+                LEFT JOIN (
+                      SELECT
+                        url_id
+                        , status_code
+                        , created_at
+                        , ROW_NUMBER() OVER (PARTITION BY url_id ORDER BY created_at DESC) as rn
+                      FROM url_checks
+                ) last_check
+                    ON u.id = last_check.url_id
+                    AND last_check.rn = 1
+            """;
 
     public static void save(final Url url) throws SQLException {
         String sql = "INSERT INTO urls(name, created_at) VALUES (?, ?)";
@@ -47,7 +59,7 @@ public final class UrlRepository extends BaseRepository {
     }
 
     public static List<Url> findAll() throws SQLException {
-        String sql = MAIN_URL_QUERY + "ORDER BY u.created_at DESC";
+        String sql = MAIN_URL_QUERY + " ORDER BY u.created_at DESC";
         List<Url> urls = new ArrayList<>();
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -58,14 +70,19 @@ public final class UrlRepository extends BaseRepository {
                 String name = rs.getString("name");
                 LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
                 Integer statusCode = rs.getInt("status_code");
-                urls.add(new Url(id, name, createdAt, statusCode));
+                Url toAdd = new Url(id, name, createdAt, statusCode);
+                Timestamp lastCheckAt = rs.getTimestamp("last_check_at");
+                if (lastCheckAt != null) {
+                    toAdd.setLastCheckAt(lastCheckAt.toLocalDateTime());
+                }
+                urls.add(toAdd);
             }
         }
         return urls;
     }
 
     public static Optional<Url> findById(final long id) throws SQLException {
-        String sql = MAIN_URL_QUERY + "WHERE id = ?";
+        String sql = MAIN_URL_QUERY + " WHERE id = ?";
         try (Connection conn = getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
@@ -74,7 +91,13 @@ public final class UrlRepository extends BaseRepository {
                 if (rs.next()) {
                     String name = rs.getString("name");
                     LocalDateTime createdAt = rs.getTimestamp("created_at").toLocalDateTime();
-                    return Optional.of(new Url(id, name, createdAt, null));
+                    Integer statusCode = rs.getInt("status_code");
+                    Url toShow = new Url(id, name, createdAt, statusCode);
+                    Timestamp lastCheckAt = rs.getTimestamp("last_check_at");
+                    if (lastCheckAt != null) {
+                        toShow.setLastCheckAt(lastCheckAt.toLocalDateTime());
+                    }
+                    return Optional.of(toShow);
                 }
             }
         }
